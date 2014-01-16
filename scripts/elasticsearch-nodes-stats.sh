@@ -1,7 +1,16 @@
 #!/usr/bin/python
 
+""" Usage:
+elasticsearch-nodes-stats.sh [--target=<server>] [--output]
+
+Options:
+  --target=<server>  Server to collect stats from [default: localhost:9200]
+  --output           Show stats API data on screen
+"""
+
 import json
 import requests
+from docopt import docopt
 
 # this script gets statistics for all cluster nodes
 # and sends a bulk request to index the data as follows:
@@ -16,7 +25,11 @@ import requests
 # - use fixed/predefined node names, otherwise any restart will generate new names
 #   and the data for a single node will be indexed under different types  
  
-stats = requests.get('http://localhost:9200/_nodes/stats?all').json()
+args = docopt(__doc__)
+stats = requests.get('http://localhost:9201/_nodes/stats?all').json()
+
+if args.get("--output"):
+    print json.dumps(stats, indent=2)
 
 if (stats is not None):
 	nodes_data = stats['nodes']
@@ -29,5 +42,6 @@ if (stats is not None):
 				bulk_data += '{"index": {"_index": "nodes_stats", "_type": "' + node_name + '"}}\n'
 				bulk_data += json.dumps(node_data) + '\n'
 		if (bulk_data != ''):
-			response = requests.post('http://localhost:9200/_bulk', data=bulk_data)
+			response = requests.post('http://%s/_bulk' % args['--target'], data=bulk_data)
+
 
